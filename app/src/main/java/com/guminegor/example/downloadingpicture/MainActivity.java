@@ -12,8 +12,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -105,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageView mImageView;
     private ProgressBar imageProgressBar;
     private int wasStoppedOnFile = -1;
+    private TextView fullscreenText;
+    private Button main_button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,12 +116,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         imageProgressBar = (ProgressBar) findViewById(R.id.progressBar2);
+        fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
         mImageView = (ImageView) findViewById(R.id.testImage2);
-        new DownloadImageTaskSafe().execute("http://guminegor.github.io/DownloadingPicture/images/image3.bmp");
-
+        main_button = (Button) findViewById(R.id.main_button);
         mVisible = true;
         mControlsView = findViewById(R.id.fullscreen_content_controls);
         mContentView = findViewById(R.id.fullscreen_content);
+
+        new DownloadImageTaskSafe().execute("http://guminegor.github.io/DownloadingPicture/images/image3.bmp");
+
+
 
 
         // Set up the user interaction to manually show or hide the system UI.
@@ -131,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
         // Upon interacting with UI controls, delay any scheduled hide()
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
-        findViewById(R.id.dummy_button).setOnTouchListener(mDelayHideTouchListener);
+        findViewById(R.id.main_button).setOnTouchListener(mDelayHideTouchListener);
     }
 
     @Override
@@ -192,6 +200,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+            mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
+            main_button.setVisibility(View.GONE);
             imageProgressBar.setVisibility(View.VISIBLE);
         }
 
@@ -215,7 +225,6 @@ public class MainActivity extends AppCompatActivity {
                 if (lengthOfFile == downloadFrom){
                     return null;
                 }
-                int a =1;
 
                 InputStream input = new BufferedInputStream(connection.getInputStream());
                 byte data[] = new byte[1024];
@@ -254,10 +263,13 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(Bitmap bm) {
 
             imageProgressBar.setVisibility(View.GONE);
+            mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
+            main_button.setVisibility(View.VISIBLE);
 
             if (bm == null) {
                 Bitmap bmp = BitmapFactory.decodeFile(Environment.getExternalStorageDirectory() + "/image.bmp");
                 mImageView.setImageBitmap(bmp);
+                fullscreenText.setText("");
                 mImageView.setVisibility(View.VISIBLE);
             }
         }
