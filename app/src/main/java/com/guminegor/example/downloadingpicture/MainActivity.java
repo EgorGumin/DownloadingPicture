@@ -276,10 +276,10 @@ public class MainActivity extends AppCompatActivity {
                 URL url = new URL(path);
 
                 URLConnection connection = url.openConnection();
-                File fileThatExists = new File(path);
+                File fileThatExists = new File(cachePath);
                 int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
                 OutputStream output = downloadStatus == NOT_LOADED ?
-                        new FileOutputStream(path, true) : new FileOutputStream(path);
+                        new FileOutputStream(cachePath, true) : new FileOutputStream(cachePath);
                 ed.putInt("downloadStatus", NOT_LOADED);
                 ed.commit();
                 long downloadFrom = fileThatExists.length();
@@ -327,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void ifDownloadError(){
-        Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+        Toast.makeText(MainActivity.this, getResources().getText(R.string.network_error), Toast.LENGTH_SHORT).show();
         mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
         main_button.setText(getResources().getText(R.string.resume));
         mainButton = MainButton.DOWNLOAD;
