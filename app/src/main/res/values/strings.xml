@@ -1,6 +1,11 @@
 <resources>
-    <string name="app_name">DownloadingPicture</string>
-
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">Picture was not downloaded yet</string>
+    <string name="app_name">Image Downloader</string>
+    <string name="no_image">Tap download to get the image</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="choose_image">Choose the image:</string>
+    <string name="save">Save</string>
+    <string name="clear_cache">You can delete downloaded image from your SD card</string>
+    <string name="clear_cache_btn">Clear data</string>
+    <string name="title_activity_main2">Main2Activity</string>
+    <string name="warning_big_image">Warning! Size of this image is more then 5 Mb!</string>
 </resources>

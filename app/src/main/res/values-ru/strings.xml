@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DownloadingPicture</string>
+    <string name="choose_image">Выберите изображение:</string>
+    <string name="save">Сохранить</string>
+    <string name="clear_cache">Вы можете удалить загруженное изображение из памяти телефона</string>
+    <string name="clear_cache_btn">Удалить</string>
+    <string name="warning_big_image">Внимание! Размер этого изображения больше 5мб!</string>
+    <string name="title_activity_settings">Настройки</string>
+</resources>

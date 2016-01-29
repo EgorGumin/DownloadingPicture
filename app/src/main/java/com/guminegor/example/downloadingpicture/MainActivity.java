@@ -1,6 +1,7 @@
 package com.guminegor.example.downloadingpicture;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -119,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
     private final int DEFAULT = 0;
     private final int NOT_LOADED = 1;
     private final int IN_CACHE = 2;
+    private int currentImage;
 
 
     @Override
@@ -126,22 +128,27 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         imageProgressBar = (ProgressBar) findViewById(R.id.progressBar2);
-        imageProgressBar.setVisibility(View.INVISIBLE);
+
         fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
         mImageView = (ImageView) findViewById(R.id.testImage2);
         main_button = (Button) findViewById(R.id.main_button);
+
 
         mVisible = true;
         mControlsView = findViewById(R.id.fullscreen_content_controls);
         mContentView = findViewById(R.id.fullscreen_content);
 
-        String [] images =  {"image0.bmp", "image1.jpg", "image2.png", "image3.bmp"};
-        cachePath = Environment.getExternalStorageDirectory() + "/" + images[0];
-        downloadPath = "http://guminegor.github.io/DownloadingPicture/images/" + images[0];
-
-        prefs = getPreferences(MODE_PRIVATE);
+        prefs = getSharedPreferences("settings", MODE_PRIVATE);
         ed = prefs.edit();
+
+        currentImage = prefs.getInt("currentImage", 0);
+        imageProgressBar.setVisibility(View.INVISIBLE);
+
+        String [] images =  {"image0.bmp", "image1.jpg", "image2.png"};
+        cachePath = Environment.getExternalStorageDirectory() + "/" + images[currentImage];
+        downloadPath = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
 
         main_button.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -155,10 +162,7 @@ public class MainActivity extends AppCompatActivity {
                     File cachedImage = new File(cachePath);
                     boolean deleted = cachedImage.delete();
                     if (deleted) {
-                        mImageView.setVisibility(View.INVISIBLE);
-                        fullscreenText.setText("Image was not downloaded yet");
-                        mainButton = MainButton.DOWNLOAD;
-                        main_button.setText("Download");
+                        ifNoImageDownloaded();
                         ed.putInt("downloadStatus", DEFAULT);
                         ed.commit();
                     } else {
@@ -342,23 +346,27 @@ public class MainActivity extends AppCompatActivity {
         mImageView.setVisibility(View.VISIBLE);
     }
 
+    private void ifNoImageDownloaded(){
+        mImageView.setVisibility(View.INVISIBLE);
+        fullscreenText.setText("Image was not downloaded yet");
+        mainButton = MainButton.DOWNLOAD;
+        main_button.setText("Download");
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add("Settings");
+        menu.add(1, 1, 1, "Settings");
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case 1:
-                // write your code here
-                Toast msg = Toast.makeText(MainActivity.this, "Menu 1", Toast.LENGTH_LONG);
-                msg.show();
-                return true;
-
-            default:
-                return super.onOptionsItemSelected(item);
+        if (item.getItemId() == 1) {
+            ifNoImageDownloaded();
+            Intent intent = new Intent(MainActivity.this, Settings.class);
+            startActivity(intent);
+            return true;
         }
+        return false;
     }
 }
