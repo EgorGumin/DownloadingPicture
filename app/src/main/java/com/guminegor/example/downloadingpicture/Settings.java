@@ -44,7 +44,7 @@ public class Settings extends AppCompatActivity implements View.OnClickListener{
         save.setOnClickListener(this);
 
         Button clear = (Button) findViewById(R.id.settings_btn_clear);
-        save.setOnClickListener(this);
+        clear.setOnClickListener(this);
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
         ed = prefs.edit();
@@ -87,15 +87,31 @@ public class Settings extends AppCompatActivity implements View.OnClickListener{
                 ed.putInt("currentImage", newImage);
                 ed.putInt("downloadStatus", 0);
                 ed.commit();
+
+//                if (prefs.getInt("downloadStatus", 0) != 1){
+//
+//                }
+//                else{
+//                    Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_LONG).show();
+//                }
+
                 break;
 
             case R.id.settings_btn_clear:
+                Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_LONG).show();
                 cachePath = Environment.getExternalStorageDirectory() + "/" + images[currentImage];
                 cachedImage = new File(cachePath);
                 boolean del = cachedImage.delete();
                 ed.putInt("downloadStatus", 0);
                 ed.commit();
-                break;
+
+//                if (prefs.getInt("downloadStatus", 0) != 1){
+//
+//                }
+//                else{
+//                    Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_LONG).show();
+//                }
+               break;
 
             default:
                 break;

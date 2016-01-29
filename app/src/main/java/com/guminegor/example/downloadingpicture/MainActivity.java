@@ -153,12 +153,12 @@ public class MainActivity extends AppCompatActivity {
         main_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mainButton == MainButton.DOWNLOAD) {
-                    new DownloadImageTaskSafe().execute(downloadPath);
+                if (v.getId() == R.id.main_button && mainButton == MainButton.DOWNLOAD) {
+                    DownloadImage(downloadPath);
                     return;
                 }
 
-                if (mainButton == MainButton.DELETE) {
+                if (v.getId() == R.id.main_button && mainButton == MainButton.DELETE) {
                     File cachedImage = new File(cachePath);
                     boolean deleted = cachedImage.delete();
                     if (deleted) {
@@ -170,8 +170,6 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                 }
-
-
             }
         });
 

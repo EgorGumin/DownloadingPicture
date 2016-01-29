@@ -14,4 +14,5 @@
     <string name="loading_paused">Загрузка приостановлена. Нажмите Возобновить</string>
     <string name="loading">Загрузка...</string>
     <string name="network_error">Ошибка: убедитесь, что вы подключены к интернету</string>
+    <string name="warning_file_downloading">Ошибка: Нельзя удалить файл во время загрузки</string>
 </resources>
