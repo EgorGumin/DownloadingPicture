@@ -3,10 +3,8 @@ package com.guminegor.example.downloadingpicture;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
@@ -90,12 +88,11 @@ public class Settings extends AppCompatActivity implements View.OnClickListener{
                     ed.putInt("currentImage", newImage);
                     ed.putInt("downloadStatus", 0);
                     ed.commit();
-                    Toast.makeText(Settings.this, R.string.saved, Toast.LENGTH_LONG).show();
+                    Toast.makeText(Settings.this, R.string.saved, Toast.LENGTH_SHORT).show();
                 }
                 else{
-                    Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_LONG).show();
+                    Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_SHORT).show();
                 }
-
                 break;
 
             case R.id.settings_btn_clear:
@@ -116,17 +113,4 @@ public class Settings extends AppCompatActivity implements View.OnClickListener{
                 break;
         }
     }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case android.R.id.home:
-                NavUtils.navigateUpFromSameTask(this);
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }
-
-
 }

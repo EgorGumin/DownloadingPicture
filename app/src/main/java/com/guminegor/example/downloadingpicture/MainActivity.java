@@ -128,13 +128,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         imageProgressBar = (ProgressBar) findViewById(R.id.progressBar2);
-
         fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
         mImageView = (ImageView) findViewById(R.id.testImage2);
         main_button = (Button) findViewById(R.id.main_button);
-
 
         mVisible = true;
         mControlsView = findViewById(R.id.fullscreen_content_controls);
@@ -172,11 +169,12 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-        ifNoImageDownloaded();
-
-
-
+        if(prefs.getInt("downloadStatus", 0) == NOT_LOADED){
+            ifDownloadError();
+        }
+        else{
+            ifNoImageDownloaded();
+        }
 
         // Set up the user interaction to manually show or hide the system UI.
         mContentView.setOnClickListener(new View.OnClickListener() {
@@ -262,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
             super.onPreExecute();
             mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
             main_button.setVisibility(View.GONE);
-            imageProgressBar.setProgress(0);
+            //imageProgressBar.setProgress(0);
             imageProgressBar.setVisibility(View.VISIBLE);
             fullscreenText.setText(getResources().getText(R.string.loading));
         }
