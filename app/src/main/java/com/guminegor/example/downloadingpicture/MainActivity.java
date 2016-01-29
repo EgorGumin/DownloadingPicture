@@ -1,6 +1,7 @@
 package com.guminegor.example.downloadingpicture;
 
 import android.annotation.SuppressLint;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
@@ -10,12 +11,15 @@ import android.os.Handler;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -109,6 +113,16 @@ public class MainActivity extends AppCompatActivity {
     private int wasStoppedOnFile = -1;
     private TextView fullscreenText;
     private Button main_button;
+    private enum MainButton { DELETE, DOWNLOAD };
+    private MainButton mainButton;
+    private String cachePath;
+    private String downloadPath;
+    private SharedPreferences prefs;
+    SharedPreferences.Editor ed;
+    private final int DEFAULT = 0;
+    private final int NOT_LOADED = 1;
+    private final int IN_CACHE = 2;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,14 +130,56 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         imageProgressBar = (ProgressBar) findViewById(R.id.progressBar2);
+        imageProgressBar.setVisibility(View.INVISIBLE);
         fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
         mImageView = (ImageView) findViewById(R.id.testImage2);
         main_button = (Button) findViewById(R.id.main_button);
+
         mVisible = true;
         mControlsView = findViewById(R.id.fullscreen_content_controls);
         mContentView = findViewById(R.id.fullscreen_content);
 
-        new DownloadImageTaskSafe().execute("http://guminegor.github.io/DownloadingPicture/images/image3.bmp");
+        String [] images =  {"image0.bmp", "image1.jpg", "image2.png", "image3.bmp"};
+        cachePath = Environment.getExternalStorageDirectory() + "/" + images[0];
+        downloadPath = "http://guminegor.github.io/DownloadingPicture/images/" + images[0];
+
+        prefs = getPreferences(MODE_PRIVATE);
+        ed = prefs.edit();
+
+
+        main_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mainButton == MainButton.DOWNLOAD) {
+                    new DownloadImageTaskSafe().execute(downloadPath);
+                    return;
+                }
+
+                if (mainButton == MainButton.DELETE) {
+                    File cachedImage = new File(cachePath);
+                    boolean deleted = cachedImage.delete();
+                    if (deleted) {
+                        mImageView.setVisibility(View.INVISIBLE);
+                        fullscreenText.setText("Image was not downloaded yet");
+                        mainButton = MainButton.DOWNLOAD;
+                        main_button.setText("Download");
+                    } else {
+                        Toast.makeText(MainActivity.this, "Error during deliting file", Toast.LENGTH_LONG).show();
+                    }
+
+                }
+
+
+            }
+        });
+        int downloadStatus = prefs.getInt("downloadStatus", 0);
+
+        if(downloadStatus == IN_CACHE){
+            ifImageInCache();
+        }
+        else{
+            new DownloadImageTaskSafe().execute(downloadPath);
+        }
 
 
 
@@ -202,6 +258,7 @@ public class MainActivity extends AppCompatActivity {
             super.onPreExecute();
             mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
             main_button.setVisibility(View.GONE);
+            imageProgressBar.setProgress(0);
             imageProgressBar.setVisibility(View.VISIBLE);
         }
 
@@ -209,8 +266,8 @@ public class MainActivity extends AppCompatActivity {
         protected Bitmap doInBackground(String... params) {
             Bitmap bitmap = null;
             try {
-                String path = Environment.getExternalStorageDirectory() + "/image.bmp";
-                URL url = new URL("http://guminegor.github.io/DownloadingPicture/images/image0.bmp");
+                String path = cachePath;
+                URL url = new URL(downloadPath);
 
                 URLConnection connection = url.openConnection();
                 File fileThatExists = new File(path);
@@ -263,15 +320,42 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(Bitmap bm) {
 
             imageProgressBar.setVisibility(View.GONE);
-            mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
-            main_button.setVisibility(View.VISIBLE);
+            ifImageInCache();
+            ed.putInt("downloadStatus", IN_CACHE);
+            ed.commit();
+        }
+    }
 
-            if (bm == null) {
-                Bitmap bmp = BitmapFactory.decodeFile(Environment.getExternalStorageDirectory() + "/image.bmp");
-                mImageView.setImageBitmap(bmp);
-                fullscreenText.setText("");
-                mImageView.setVisibility(View.VISIBLE);
-            }
+    private void ifImageInCache(){
+        mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
+        main_button.setText("Delete image");
+        mainButton = MainButton.DELETE;
+
+        main_button.setVisibility(View.VISIBLE);
+
+        Bitmap bmp = BitmapFactory.decodeFile(cachePath);
+        mImageView.setImageBitmap(bmp);
+        fullscreenText.setText("");
+        mImageView.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add("Settings");
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case 1:
+                // write your code here
+                Toast msg = Toast.makeText(MainActivity.this, "Menu 1", Toast.LENGTH_LONG);
+                msg.show();
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
         }
     }
 }
