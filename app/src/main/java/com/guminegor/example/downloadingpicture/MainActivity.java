@@ -23,12 +23,9 @@ import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -146,7 +143,6 @@ public class MainActivity extends AppCompatActivity {
         prefs = getPreferences(MODE_PRIVATE);
         ed = prefs.edit();
 
-
         main_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -163,6 +159,8 @@ public class MainActivity extends AppCompatActivity {
                         fullscreenText.setText("Image was not downloaded yet");
                         mainButton = MainButton.DOWNLOAD;
                         main_button.setText("Download");
+                        ed.putInt("downloadStatus", DEFAULT);
+                        ed.commit();
                     } else {
                         Toast.makeText(MainActivity.this, "Error during deliting file", Toast.LENGTH_LONG).show();
                     }
@@ -172,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        int downloadStatus = prefs.getInt("downloadStatus", 0);
+        int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
 
         if(downloadStatus == IN_CACHE){
             ifImageInCache();
@@ -251,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
 
-    private class DownloadImageTaskSafe extends AsyncTask<String, String, Bitmap> {
+    private class DownloadImageTaskSafe extends AsyncTask<String, String, Boolean> {
 
         @Override
         protected void onPreExecute() {
@@ -263,15 +261,18 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected Bitmap doInBackground(String... params) {
-            Bitmap bitmap = null;
+        protected Boolean doInBackground(String... params) {
             try {
                 String path = cachePath;
                 URL url = new URL(downloadPath);
 
                 URLConnection connection = url.openConnection();
                 File fileThatExists = new File(path);
-                OutputStream output = wasStoppedOnFile == -1 ? new FileOutputStream(path) :new FileOutputStream(path, true);
+                int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
+                OutputStream output = downloadStatus == NOT_LOADED ?
+                        new FileOutputStream(path, true) : new FileOutputStream(path);
+                ed.putInt("downloadStatus", NOT_LOADED);
+                ed.commit();
                 long downloadFrom = fileThatExists.length();
                 connection.setRequestProperty("Range", "bytes=" + downloadFrom + "-");
 
@@ -279,9 +280,7 @@ public class MainActivity extends AppCompatActivity {
 
                 int lengthOfFile = connection.getContentLength();
 
-                if (lengthOfFile == downloadFrom){
-                    return null;
-                }
+                int k = 0;
 
                 InputStream input = new BufferedInputStream(connection.getInputStream());
                 byte data[] = new byte[1024];
@@ -293,22 +292,11 @@ public class MainActivity extends AppCompatActivity {
                     publishProgress("" + (total + downloadFrom)* 100 / (lengthOfFile + downloadFrom));
                     output.write(data, 0 , count);
                 }
-            } catch (java.net.SocketException ex) {
+            } catch (Exception ex) {
                 Log.d("Networking", ex.getLocalizedMessage());
-                wasStoppedOnFile = 0;
-            } catch (java.net.UnknownHostException e){
-                Log.d("Networking", e.getLocalizedMessage());
-                wasStoppedOnFile = 0;
+                return false;
             }
-            catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return null;
+            return true;
         }
 
 
@@ -317,13 +305,28 @@ public class MainActivity extends AppCompatActivity {
             imageProgressBar.setProgress(Integer.parseInt(progress[0]));
         }
 
-        protected void onPostExecute(Bitmap bm) {
-
-            imageProgressBar.setVisibility(View.GONE);
-            ifImageInCache();
-            ed.putInt("downloadStatus", IN_CACHE);
-            ed.commit();
+        protected void onPostExecute(Boolean downloaded) {
+            if(downloaded){
+                imageProgressBar.setVisibility(View.GONE);
+                ed.putInt("downloadStatus", IN_CACHE);
+                ed.commit();
+                ifImageInCache();
+            }
+            else{
+                ifDownloadError();
+            }
         }
+    }
+
+    private void ifDownloadError(){
+        Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+        mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
+        main_button.setText("Resume");
+        mainButton = MainButton.DOWNLOAD;
+        imageProgressBar.setVisibility(View.INVISIBLE);
+
+        main_button.setVisibility(View.VISIBLE);
+        fullscreenText.setText("Loading is paused. Tap Resume to continue");
     }
 
     private void ifImageInCache(){
