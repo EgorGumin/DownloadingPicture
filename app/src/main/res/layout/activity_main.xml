@@ -14,9 +14,8 @@
         android:layout_height="match_parent"
         android:gravity="center"
         android:keepScreenOn="true"
-        android:text="@string/dummy_content"
         android:textColor="#33b5e5"
-        android:textSize="50sp"
+        android:textSize="40sp"
         android:textStyle="bold" />
 
     <!-- This FrameLayout insets its children based on system windows using
@@ -48,8 +47,7 @@
                 style="?metaButtonBarButtonStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/dummy_button" />
+                android:layout_weight="1" />
 
         </LinearLayout>
 
@@ -58,9 +56,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/progressBar2"
-            android:minHeight="200dp"
+            android:minHeight="150dp"
             android:layout_gravity="center_horizontal|bottom"
-            android:minWidth="200dp" />
+            android:minWidth="300dp" />
     </FrameLayout>
 
 </FrameLayout>

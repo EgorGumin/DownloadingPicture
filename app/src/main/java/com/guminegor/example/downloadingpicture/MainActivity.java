@@ -174,14 +174,8 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
 
-        if(downloadStatus == IN_CACHE){
-            ifImageInCache();
-        }
-        else{
-            new DownloadImageTaskSafe().execute(downloadPath);
-        }
+        DownloadImage(downloadPath);
 
 
 
@@ -253,6 +247,16 @@ public class MainActivity extends AppCompatActivity {
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
 
+    private void DownloadImage(String path){
+        int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
+        if(downloadStatus == IN_CACHE){
+            ifImageInCache();
+        }
+        else{
+            new DownloadImageTaskSafe().execute(path);
+        }
+    }
+
     private class DownloadImageTaskSafe extends AsyncTask<String, String, Boolean> {
 
         @Override
@@ -262,13 +266,14 @@ public class MainActivity extends AppCompatActivity {
             main_button.setVisibility(View.GONE);
             imageProgressBar.setProgress(0);
             imageProgressBar.setVisibility(View.VISIBLE);
+            fullscreenText.setText(getResources().getText(R.string.loading));
         }
 
         @Override
         protected Boolean doInBackground(String... params) {
             try {
-                String path = cachePath;
-                URL url = new URL(downloadPath);
+                String path = params[0];
+                URL url = new URL(path);
 
                 URLConnection connection = url.openConnection();
                 File fileThatExists = new File(path);
@@ -304,7 +309,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-
         protected void onProgressUpdate(String... progress) {
             imageProgressBar.setProgress(Integer.parseInt(progress[0]));
         }
@@ -325,17 +329,17 @@ public class MainActivity extends AppCompatActivity {
     private void ifDownloadError(){
         Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
         mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
-        main_button.setText("Resume");
+        main_button.setText(getResources().getText(R.string.resume));
         mainButton = MainButton.DOWNLOAD;
         imageProgressBar.setVisibility(View.INVISIBLE);
 
         main_button.setVisibility(View.VISIBLE);
-        fullscreenText.setText("Loading is paused. Tap Resume to continue");
+        fullscreenText.setText(getResources().getText(R.string.loading_paused));
     }
 
     private void ifImageInCache(){
         mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
-        main_button.setText("Delete image");
+        main_button.setText(getResources().getText(R.string.btn_delete));
         mainButton = MainButton.DELETE;
 
         main_button.setVisibility(View.VISIBLE);
@@ -348,14 +352,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void ifNoImageDownloaded(){
         mImageView.setVisibility(View.INVISIBLE);
-        fullscreenText.setText("Image was not downloaded yet");
+        fullscreenText.setText(getResources().getText(R.string.no_image));
         mainButton = MainButton.DOWNLOAD;
-        main_button.setText("Download");
+        main_button.setText(getResources().getText(R.string.download));
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(1, 1, 1, "Settings");
+        menu.add(1, 1, 1, getResources().getText(R.string.title_activity_settings));
         return true;
     }
 

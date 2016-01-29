@@ -6,6 +6,10 @@
     <string name="save">Save</string>
     <string name="clear_cache">You can delete downloaded image from your SD card</string>
     <string name="clear_cache_btn">Clear data</string>
-    <string name="title_activity_main2">Main2Activity</string>
     <string name="warning_big_image">Warning! Size of this image is more then 5 Mb!</string>
+    <string name="btn_delete">Delete image</string>
+    <string name="resume">Resume</string>
+    <string name="download">Download</string>
+    <string name="loading_paused">Loading is paused. Tap Resume to continue</string>
+    <string name="loading">Loading...</string>
 </resources>
