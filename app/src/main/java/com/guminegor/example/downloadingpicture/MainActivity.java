@@ -173,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        DownloadImage(downloadPath);
+        ifNoImageDownloaded();
 
 
 
@@ -361,14 +361,18 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 1) {
-            ifNoImageDownloaded();
-            Intent intent = new Intent(MainActivity.this, Settings.class);
-            startActivity(intent);
-            return true;
+        switch (item.getItemId()) {
+            case 1:
+                ifNoImageDownloaded();
+                Intent intent = new Intent(MainActivity.this, Settings.class);
+                startActivity(intent);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
-        return false;
     }
 }
