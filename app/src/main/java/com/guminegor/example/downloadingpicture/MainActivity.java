@@ -9,6 +9,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.support.v4.os.ResultReceiver;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -169,12 +170,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        if(prefs.getInt("downloadStatus", 0) == NOT_LOADED){
-            ifDownloadError();
-        }
-        else{
-            ifNoImageDownloaded();
-        }
+
 
         // Set up the user interaction to manually show or hide the system UI.
         mContentView.setOnClickListener(new View.OnClickListener() {
@@ -188,6 +184,18 @@ public class MainActivity extends AppCompatActivity {
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
         findViewById(R.id.main_button).setOnTouchListener(mDelayHideTouchListener);
+
+//        if(prefs.getInt("downloadStatus", 0) == NOT_LOADED){
+//            ifDownloadError();
+//        }
+//        else{
+//            ifNoImageDownloaded();
+//        }
+        imageProgressBar.setVisibility(View.VISIBLE);
+        Intent intent = new Intent(this, DownloadService.class);
+        intent.putExtra("url", "http://guminegor.github.io/DownloadingPicture/images/image0.bmp");
+        intent.putExtra("receiver", new DownloadReceiver(new Handler()));
+        startService(intent);
     }
 
     @Override
@@ -371,6 +379,24 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @SuppressLint("ParcelCreator")
+    private class DownloadReceiver extends ResultReceiver {
+        public DownloadReceiver(Handler handler) {
+            super(handler);
+        }
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            super.onReceiveResult(resultCode, resultData);
+            if (resultCode == DownloadService.UPDATE_PROGRESS) {
+                int progress = resultData.getInt("progress");
+                imageProgressBar.setProgress(progress);
+                if (progress == 100) {
+                    imageProgressBar.setVisibility(View.INVISIBLE);
+                }
+            }
         }
     }
 }
