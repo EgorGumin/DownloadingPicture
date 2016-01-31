@@ -1,17 +1,23 @@
 package com.guminegor.example.downloadingpicture;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -22,13 +28,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URL;
-import java.net.URLConnection;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -114,13 +114,18 @@ public class MainActivity extends AppCompatActivity {
     private enum MainButton { DELETE, DOWNLOAD };
     private MainButton mainButton;
     private String cachePath;
-    private String downloadPath;
     private SharedPreferences prefs;
     SharedPreferences.Editor ed;
     private final int DEFAULT = 0;
     private final int NOT_LOADED = 1;
     private final int IN_CACHE = 2;
     private int currentImage;
+    private String [] images =  {"image0.bmp", "image1.jpg", "image2.png"};
+
+    DownloadManager downloadManager;
+    String downloadFileUrl;
+    private long myDownloadReference;
+    private BroadcastReceiver receiverDownloadComplete;
 
 
     @Override
@@ -130,28 +135,40 @@ public class MainActivity extends AppCompatActivity {
 
         imageProgressBar = (ProgressBar) findViewById(R.id.progressBar2);
         fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
+        mContentView = findViewById(R.id.fullscreen_content);
+        mControlsView = findViewById(R.id.fullscreen_content_controls);
         mImageView = (ImageView) findViewById(R.id.testImage2);
         main_button = (Button) findViewById(R.id.main_button);
-
         mVisible = true;
-        mControlsView = findViewById(R.id.fullscreen_content_controls);
-        mContentView = findViewById(R.id.fullscreen_content);
+        // Set up the user interaction to manually show or hide the system UI.
+        mContentView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                toggle();
+            }
+        });
+        // Upon interacting with UI controls, delay any scheduled hide()
+        // operations to prevent the jarring behavior of controls going away
+        // while interacting with the UI.
+        findViewById(R.id.main_button).setOnTouchListener(mDelayHideTouchListener);
+
+        imageProgressBar.setVisibility(View.INVISIBLE);
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
         ed = prefs.edit();
+        ed.putInt("downloadStatus", DEFAULT);
+        ed.commit();
+        currentImage = prefs.getInt("currentImage", 1);
 
-        currentImage = prefs.getInt("currentImage", 0);
-        imageProgressBar.setVisibility(View.INVISIBLE);
-
-        String [] images =  {"image0.bmp", "image1.jpg", "image2.png"};
-        cachePath = Environment.getExternalStorageDirectory() + "/" + images[currentImage];
-        downloadPath = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
+        cachePath = prefs.getString("cachePath", "");
+        downloadFileUrl = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
+        downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
 
         main_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (v.getId() == R.id.main_button && mainButton == MainButton.DOWNLOAD) {
-                    DownloadImage(downloadPath);
+                    DownloadImage(downloadFileUrl);
                     return;
                 }
 
@@ -169,25 +186,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
         if(prefs.getInt("downloadStatus", 0) == NOT_LOADED){
             ifDownloadError();
         }
         else{
             ifNoImageDownloaded();
         }
-
-        // Set up the user interaction to manually show or hide the system UI.
-        mContentView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                toggle();
-            }
-        });
-
-        // Upon interacting with UI controls, delay any scheduled hide()
-        // operations to prevent the jarring behavior of controls going away
-        // while interacting with the UI.
-        findViewById(R.id.main_button).setOnTouchListener(mDelayHideTouchListener);
     }
 
     @Override
@@ -244,82 +249,137 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void DownloadImage(String path){
+//        TODO check file existence
         int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
         if(downloadStatus == IN_CACHE){
             ifImageInCache();
         }
         else{
-            new DownloadImageTaskSafe().execute(path);
+            DownloadImageTaskSafe(path);
         }
     }
 
-    private class DownloadImageTaskSafe extends AsyncTask<String, String, Boolean> {
+    private void DownloadImageTaskSafe(String fileURL) {
+        mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
+        main_button.setVisibility(View.GONE);
+        //imageProgressBar.setProgress(0);
+        imageProgressBar.setVisibility(View.VISIBLE);
+        fullscreenText.setText(getResources().getText(R.string.loading));
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
-            main_button.setVisibility(View.GONE);
-            //imageProgressBar.setProgress(0);
-            imageProgressBar.setVisibility(View.VISIBLE);
-            fullscreenText.setText(getResources().getText(R.string.loading));
+        ConnectivityManager conManager = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = conManager.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null
+                && activeNetwork.isConnectedOrConnecting();
+
+        if (!isConnected) {
+            Toast.makeText(MainActivity.this, "No Connection. " +
+                            "Picture will be download when connection resumes",
+                    Toast.LENGTH_SHORT).show();
         }
 
-        @Override
-        protected Boolean doInBackground(String... params) {
-            try {
-                String path = params[0];
-                URL url = new URL(path);
+        Uri uri = Uri.parse(downloadFileUrl);
+        DownloadManager.Request request = new DownloadManager.Request(uri);
 
-                URLConnection connection = url.openConnection();
-                File fileThatExists = new File(cachePath);
-                int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
-                OutputStream output = downloadStatus == NOT_LOADED ?
-                        new FileOutputStream(cachePath, true) : new FileOutputStream(cachePath);
-                ed.putInt("downloadStatus", NOT_LOADED);
-                ed.commit();
-                long downloadFrom = fileThatExists.length();
-                connection.setRequestProperty("Range", "bytes=" + downloadFrom + "-");
+//                set the notification
+        request.setDescription("My Download")
+                .setTitle("Notification Title");
 
-                connection.connect();
 
-                int lengthOfFile = connection.getContentLength();
+        request.setDestinationInExternalFilesDir(MainActivity.this,
+                Environment.DIRECTORY_DOWNLOADS, images[currentImage]);
 
-                int k = 0;
+        request.setVisibleInDownloadsUi(true);
 
-                InputStream input = new BufferedInputStream(connection.getInputStream());
-                byte data[] = new byte[1024];
+//                select which network, etc
+        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI
+                | DownloadManager.Request.NETWORK_MOBILE);
 
-                long total = 0;
-                int count = 0;
-                while ((count = input.read(data)) != -1) {
-                    total += count;
-                    publishProgress("" + (total + downloadFrom)* 100 / (lengthOfFile + downloadFrom));
-                    output.write(data, 0 , count);
+//                queue the download
+        myDownloadReference = downloadManager.enqueue(request);
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        cachePath = prefs.getString("cachePath", "");
+
+
+//        filter for download - on completion
+        IntentFilter intentFilter = new IntentFilter(DownloadManager
+                .ACTION_DOWNLOAD_COMPLETE);
+
+        receiverDownloadComplete = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long reference = intent.getLongExtra(DownloadManager
+                        .EXTRA_DOWNLOAD_ID, -1);
+                if (myDownloadReference == reference) {
+//                    do something with the download file
+                    DownloadManager.Query query = new DownloadManager.Query();
+                    query.setFilterById(reference);
+                    Cursor cursor = downloadManager.query(query);
+
+                    cursor.moveToFirst();
+//                        get the status of the download
+                    int columnIndex = cursor.getColumnIndex(DownloadManager
+                            .COLUMN_STATUS);
+                    int status = cursor.getInt(columnIndex);
+
+                    int fileNameIndex = cursor.getColumnIndex(DownloadManager
+                            .COLUMN_LOCAL_FILENAME);
+                    String savedFilePath = cursor.getString(fileNameIndex);
+                    ed.putString("cachePath", savedFilePath);
+                    ed.commit();
+                    Toast.makeText(MainActivity.this, savedFilePath, Toast.LENGTH_LONG).show();
+
+//                        get the reason - more detail on the status
+                    int columnReason = cursor.getColumnIndex(DownloadManager
+                            .COLUMN_REASON);
+                    int reason = cursor.getInt(columnReason);
+
+                    switch (status) {
+                        case DownloadManager.STATUS_SUCCESSFUL:
+                            imageProgressBar.setVisibility(View.GONE);
+                            ed.putInt("downloadStatus", IN_CACHE);
+                            ed.commit();
+                            ifImageInCache();
+
+                            break;
+                        case DownloadManager.STATUS_FAILED:
+                            Toast.makeText(MainActivity.this,
+                                    "FAILED: " + reason,
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                        case DownloadManager.STATUS_PAUSED:
+                            Toast.makeText(MainActivity.this,
+                                    "PAUSED: " + reason,
+                                    Toast.LENGTH_LONG).show();
+                                    ifDownloadError();
+                            break;
+                        case DownloadManager.STATUS_PENDING:
+                            Toast.makeText(MainActivity.this,
+                                    "PENDING!",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                        case DownloadManager.STATUS_RUNNING:
+                            Toast.makeText(MainActivity.this,
+                                    "RUNNING!",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                    }
+                    cursor.close();
                 }
-            } catch (Exception ex) {
-                Log.d("Networking", ex.getLocalizedMessage());
-                return false;
             }
-            return true;
-        }
+        };
+        registerReceiver(receiverDownloadComplete, intentFilter);
+    }
 
-
-        protected void onProgressUpdate(String... progress) {
-            imageProgressBar.setProgress(Integer.parseInt(progress[0]));
-        }
-
-        protected void onPostExecute(Boolean downloaded) {
-            if(downloaded){
-                imageProgressBar.setVisibility(View.GONE);
-                ed.putInt("downloadStatus", IN_CACHE);
-                ed.commit();
-                ifImageInCache();
-            }
-            else{
-                ifDownloadError();
-            }
-        }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(receiverDownloadComplete);
     }
 
     private void ifDownloadError(){
