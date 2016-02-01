@@ -116,9 +116,6 @@ public class MainActivity extends AppCompatActivity {
     private String cachePath;
     private SharedPreferences prefs;
     SharedPreferences.Editor ed;
-    private final int DEFAULT = 0;
-    private final int NOT_LOADED = 1;
-    private final int IN_CACHE = 2;
     private int currentImage;
     private String [] images =  {"image0.bmp", "image1.jpg", "image2.png"};
 
@@ -156,11 +153,10 @@ public class MainActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
         ed = prefs.edit();
-        ed.putInt("downloadStatus", DEFAULT);
-        ed.commit();
         currentImage = prefs.getInt("currentImage", 1);
+        ed.putLong("dmReference", -1);
+        ed.commit();
 
-        cachePath = prefs.getString("cachePath", "");
         downloadFileUrl = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
 
@@ -168,31 +164,21 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (v.getId() == R.id.main_button && mainButton == MainButton.DOWNLOAD) {
-                    DownloadImage(downloadFileUrl);
+                    DownloadImageTaskSafe(downloadFileUrl);
                     return;
                 }
 
                 if (v.getId() == R.id.main_button && mainButton == MainButton.DELETE) {
                     File cachedImage = new File(cachePath);
                     boolean deleted = cachedImage.delete();
-                    if (deleted) {
-                        ifNoImageDownloaded();
-                        ed.putInt("downloadStatus", DEFAULT);
-                        ed.commit();
-                    } else {
-                        Toast.makeText(MainActivity.this, "Error during deliting file", Toast.LENGTH_LONG).show();
-                    }
-
+                    ed.putLong("dmReference", -1);
+                    ed.commit();
+                    ifNoImageDownloaded();
                 }
             }
         });
 
-        if(prefs.getInt("downloadStatus", 0) == NOT_LOADED){
-            ifDownloadError();
-        }
-        else{
-            ifNoImageDownloaded();
-        }
+
     }
 
     @Override
@@ -248,23 +234,10 @@ public class MainActivity extends AppCompatActivity {
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
 
-    private void DownloadImage(String path){
-//        TODO check file existence
-        int downloadStatus = prefs.getInt("downloadStatus", DEFAULT);
-        if(downloadStatus == IN_CACHE){
-            ifImageInCache();
-        }
-        else{
-            DownloadImageTaskSafe(path);
-        }
-    }
 
     private void DownloadImageTaskSafe(String fileURL) {
         mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
-        main_button.setVisibility(View.GONE);
-        //imageProgressBar.setProgress(0);
-        imageProgressBar.setVisibility(View.VISIBLE);
-        fullscreenText.setText(getResources().getText(R.string.loading));
+        ifLoading();
 
         ConnectivityManager conManager = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -282,8 +255,8 @@ public class MainActivity extends AppCompatActivity {
         DownloadManager.Request request = new DownloadManager.Request(uri);
 
 //                set the notification
-        request.setDescription("My Download")
-                .setTitle("Notification Title");
+        request.setDescription("ImageDownloader")
+                .setTitle(images[currentImage]);
 
 
         request.setDestinationInExternalFilesDir(MainActivity.this,
@@ -297,13 +270,24 @@ public class MainActivity extends AppCompatActivity {
 
 //                queue the download
         myDownloadReference = downloadManager.enqueue(request);
+        ed.putLong("dmReference", myDownloadReference);
+        ed.commit();
 
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        cachePath = prefs.getString("cachePath", "");
+        currentImage = prefs.getInt("currentImage", 1);
+        downloadFileUrl = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
+        long reference = prefs.getLong("dmReference", -1);
+
+        if(reference == -1){
+            ifNoImageDownloaded();
+        }
+        else{
+            checkLastDownloadStatus(reference);
+        }
 
 
 //        filter for download - on completion
@@ -313,8 +297,7 @@ public class MainActivity extends AppCompatActivity {
         receiverDownloadComplete = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                long reference = intent.getLongExtra(DownloadManager
-                        .EXTRA_DOWNLOAD_ID, -1);
+                long reference = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
                 if (myDownloadReference == reference) {
 //                    do something with the download file
                     DownloadManager.Query query = new DownloadManager.Query();
@@ -329,10 +312,9 @@ public class MainActivity extends AppCompatActivity {
 
                     int fileNameIndex = cursor.getColumnIndex(DownloadManager
                             .COLUMN_LOCAL_FILENAME);
-                    String savedFilePath = cursor.getString(fileNameIndex);
-                    ed.putString("cachePath", savedFilePath);
+                    cachePath = cursor.getString(fileNameIndex);
+                    ed.putString("cachePath", cachePath);
                     ed.commit();
-                    Toast.makeText(MainActivity.this, savedFilePath, Toast.LENGTH_LONG).show();
 
 //                        get the reason - more detail on the status
                     int columnReason = cursor.getColumnIndex(DownloadManager
@@ -342,15 +324,17 @@ public class MainActivity extends AppCompatActivity {
                     switch (status) {
                         case DownloadManager.STATUS_SUCCESSFUL:
                             imageProgressBar.setVisibility(View.GONE);
-                            ed.putInt("downloadStatus", IN_CACHE);
-                            ed.commit();
                             ifImageInCache();
 
                             break;
                         case DownloadManager.STATUS_FAILED:
+//                            // TODO: GOOGLE, WHY R U DOING THIS TO ME??????
                             Toast.makeText(MainActivity.this,
                                     "FAILED: " + reason,
                                     Toast.LENGTH_LONG).show();
+                            ed.putLong("dmReference", -1);
+                            ed.commit();
+                            ifNoImageDownloaded();
                             break;
                         case DownloadManager.STATUS_PAUSED:
                             Toast.makeText(MainActivity.this,
@@ -364,9 +348,8 @@ public class MainActivity extends AppCompatActivity {
                                     Toast.LENGTH_LONG).show();
                             break;
                         case DownloadManager.STATUS_RUNNING:
-                            Toast.makeText(MainActivity.this,
-                                    "RUNNING!",
-                                    Toast.LENGTH_LONG).show();
+                            main_button.setVisibility(View.GONE);
+                            fullscreenText.setText(getResources().getText(R.string.loading));
                             break;
                     }
                     cursor.close();
@@ -382,14 +365,64 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(receiverDownloadComplete);
     }
 
+
+    private void checkLastDownloadStatus(long reference)
+    {
+        DownloadManager.Query query = new DownloadManager.Query();
+        query.setFilterById(reference);
+        Cursor cursor = downloadManager.query(query);
+
+        cursor.moveToFirst();
+        int columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+        int status = cursor.getInt(columnIndex);
+
+        int columnReason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
+        int reason = cursor.getInt(columnReason);
+
+        int fileNameIndex = cursor.getColumnIndex(DownloadManager
+                .COLUMN_LOCAL_FILENAME);
+
+        cachePath = cursor.getString(fileNameIndex);
+        ed.putString("cachePath", cachePath);
+        ed.commit();
+
+        switch (status) {
+            case DownloadManager.STATUS_SUCCESSFUL:
+                imageProgressBar.setVisibility(View.GONE);
+                ifImageInCache();
+
+                break;
+            case DownloadManager.STATUS_FAILED:
+                Toast.makeText(MainActivity.this,
+                        "Download failed: " + reason, Toast.LENGTH_LONG).show();
+                break;
+            case DownloadManager.STATUS_PAUSED:
+                Toast.makeText(MainActivity.this, "Download paused: " + reason,
+                        Toast.LENGTH_LONG).show();
+                ifDownloadError();
+                break;
+            case DownloadManager.STATUS_PENDING:
+                Toast.makeText(MainActivity.this,
+                        "PENDING!",
+                        Toast.LENGTH_LONG).show();
+                break;
+            case DownloadManager.STATUS_RUNNING:
+                main_button.setVisibility(View.GONE);
+                fullscreenText.setText(getResources().getText(R.string.loading));
+                break;
+        }
+        cursor.close();
+    }
+
+    private void ifLoading(){
+        main_button.setVisibility(View.GONE);
+        fullscreenText.setText(getResources().getText(R.string.loading));
+    }
+
     private void ifDownloadError(){
         Toast.makeText(MainActivity.this, getResources().getText(R.string.network_error), Toast.LENGTH_SHORT).show();
         mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
         main_button.setText(getResources().getText(R.string.resume));
-        mainButton = MainButton.DOWNLOAD;
-        imageProgressBar.setVisibility(View.INVISIBLE);
-
-        main_button.setVisibility(View.VISIBLE);
         fullscreenText.setText(getResources().getText(R.string.loading_paused));
     }
 

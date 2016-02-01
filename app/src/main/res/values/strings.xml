@@ -16,4 +16,5 @@
     <string name="warning_file_downloading">Error: Unable to delete file during downloading</string>
     <string name="saved">The changes have been saved</string>
     <string name="deleted">Deleted</string>
+    <string name="nothing_to_delete">File is already deleted</string>
 </resources>

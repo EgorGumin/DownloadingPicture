@@ -2,7 +2,6 @@ package com.guminegor.example.downloadingpicture;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
@@ -19,7 +18,6 @@ public class Settings extends AppCompatActivity implements View.OnClickListener{
     private SharedPreferences.Editor ed;
     private int currentImage;
     private int newImage;
-    private String [] images = {"image0.bmp", "image1.jpg", "image2.png"};
     private String cachePath;
     private File cachedImage;
 
@@ -81,31 +79,30 @@ public class Settings extends AppCompatActivity implements View.OnClickListener{
                 break;
 
             case R.id.settings_btn_save:
-                if (prefs.getInt("downloadStatus", 0) != 1){
-                    cachePath = Environment.getExternalStorageDirectory() + "/" + images[currentImage];
+                cachePath = prefs.getString("cachePath", "");
+                if(!cachePath.isEmpty()){
                     cachedImage = new File(cachePath);
                     boolean deleted = cachedImage.delete();
-                    ed.putInt("currentImage", newImage);
-                    ed.putInt("downloadStatus", 0);
-                    ed.commit();
-                    Toast.makeText(Settings.this, R.string.saved, Toast.LENGTH_SHORT).show();
                 }
-                else{
-                    Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_SHORT).show();
-                }
+                ed.putInt("currentImage", newImage);
+                ed.putInt("dmReference", -1);
+                ed.putString("cachePath", "");
+                ed.commit();
+                Toast.makeText(Settings.this, R.string.saved, Toast.LENGTH_SHORT).show();
                 break;
 
             case R.id.settings_btn_clear:
-                if (prefs.getInt("downloadStatus", 0) != 1){
-                    cachePath = Environment.getExternalStorageDirectory() + "/" + images[currentImage];
+                cachePath = prefs.getString("cachePath", "");
+                if (!cachePath.isEmpty()){
                     cachedImage = new File(cachePath);
                     boolean del = cachedImage.delete();
-                    ed.putInt("downloadStatus", 0);
+                    ed.putInt("dmReference", -1);
+                    ed.putString("cachePath", "");
                     ed.commit();
-                    Toast.makeText(Settings.this, R.string.deleted, Toast.LENGTH_LONG).show();
+                    Toast.makeText(Settings.this, R.string.deleted, Toast.LENGTH_SHORT).show();
                 }
                 else{
-                    Toast.makeText(Settings.this, R.string.warning_file_downloading, Toast.LENGTH_LONG).show();
+                    Toast.makeText(Settings.this, R.string.nothing_to_delete, Toast.LENGTH_SHORT).show();
                 }
                break;
 

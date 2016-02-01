@@ -17,4 +17,5 @@
     <string name="warning_file_downloading">Ошибка: Нельзя удалить файл во время загрузки</string>
     <string name="saved">Изменения сохранены</string>
     <string name="deleted">Файл удален</string>
+    <string name="nothing_to_delete">Файл уже удален</string>
 </resources>
