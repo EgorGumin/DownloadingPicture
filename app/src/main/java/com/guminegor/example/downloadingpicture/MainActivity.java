@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
         ed.putLong("dmReference", -1);
         ed.commit();
 
-        downloadFileUrl = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
+        downloadFileUrl = "http://s3.eu-central-1.amazonaws.com/imagedownloader/" + images[currentImage];
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
 
         main_button.setOnClickListener(new View.OnClickListener() {
@@ -279,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         currentImage = prefs.getInt("currentImage", 1);
-        downloadFileUrl = "http://guminegor.github.io/DownloadingPicture/images/" + images[currentImage];
+        downloadFileUrl = "http://s3.eu-central-1.amazonaws.com/imagedownloader/" + images[currentImage];
         long reference = prefs.getLong("dmReference", -1);
 
         if(reference == -1){
