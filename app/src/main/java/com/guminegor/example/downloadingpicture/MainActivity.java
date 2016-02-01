@@ -24,16 +24,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
 
-/**
- * An example full-screen activity that shows and hides the system UI (i.e.
- * status bar and navigation/system bar) with user interaction.
- */
 public class MainActivity extends AppCompatActivity {
     /**
      * Whether or not the system UI should be auto-hidden after
@@ -45,12 +40,8 @@ public class MainActivity extends AppCompatActivity {
      * If {@link #AUTO_HIDE} is set, the number of milliseconds to wait after
      * user interaction before hiding the system UI.
      */
-    private static final int AUTO_HIDE_DELAY_MILLIS = 3000;
+    private static final int AUTO_HIDE_DELAY_MILLIS = 5000;
 
-    /**
-     * Some older devices needs a small delay between UI widget updates
-     * and a change of the status and navigation bar.
-     */
     private static final int UI_ANIMATION_DELAY = 300;
     private final Handler mHideHandler = new Handler();
     private View mContentView;
@@ -107,8 +98,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     private ImageView mImageView;
-    private ProgressBar imageProgressBar;
-    private int wasStoppedOnFile = -1;
     private TextView fullscreenText;
     private Button main_button;
     private enum MainButton { DELETE, DOWNLOAD };
@@ -130,11 +119,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        imageProgressBar = (ProgressBar) findViewById(R.id.progressBar2);
         fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
         mContentView = findViewById(R.id.fullscreen_content);
         mControlsView = findViewById(R.id.fullscreen_content_controls);
-        mImageView = (ImageView) findViewById(R.id.testImage2);
+        mImageView = (ImageView) findViewById(R.id.loaded_image);
         main_button = (Button) findViewById(R.id.main_button);
         mVisible = true;
         // Set up the user interaction to manually show or hide the system UI.
@@ -148,8 +136,6 @@ public class MainActivity extends AppCompatActivity {
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
         findViewById(R.id.main_button).setOnTouchListener(mDelayHideTouchListener);
-
-        imageProgressBar.setVisibility(View.INVISIBLE);
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
         ed = prefs.edit();
@@ -323,10 +309,9 @@ public class MainActivity extends AppCompatActivity {
 
                     switch (status) {
                         case DownloadManager.STATUS_SUCCESSFUL:
-                            imageProgressBar.setVisibility(View.GONE);
                             ifImageInCache();
-
                             break;
+
                         case DownloadManager.STATUS_FAILED:
 //                            // TODO: GOOGLE, WHY R U DOING THIS TO ME??????
                             Toast.makeText(MainActivity.this,
@@ -336,17 +321,20 @@ public class MainActivity extends AppCompatActivity {
                             ed.commit();
                             ifNoImageDownloaded();
                             break;
+
                         case DownloadManager.STATUS_PAUSED:
                             Toast.makeText(MainActivity.this,
                                     "PAUSED: " + reason,
                                     Toast.LENGTH_LONG).show();
                                     ifDownloadError();
                             break;
+
                         case DownloadManager.STATUS_PENDING:
                             Toast.makeText(MainActivity.this,
                                     "PENDING!",
                                     Toast.LENGTH_LONG).show();
                             break;
+
                         case DownloadManager.STATUS_RUNNING:
                             main_button.setVisibility(View.GONE);
                             fullscreenText.setText(getResources().getText(R.string.loading));
@@ -388,7 +376,6 @@ public class MainActivity extends AppCompatActivity {
 
         switch (status) {
             case DownloadManager.STATUS_SUCCESSFUL:
-                imageProgressBar.setVisibility(View.GONE);
                 ifImageInCache();
 
                 break;
