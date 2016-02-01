@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int UI_ANIMATION_DELAY = 300;
     private final Handler mHideHandler = new Handler();
-    private View mContentView;
+    private TextView fullscreenText;
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
         @Override
@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
             // Note that some of these constants are new as of API 16 (Jelly Bean)
             // and API 19 (KitKat). It is safe to use them, as they are inlined
             // at compile-time and do nothing on earlier devices.
-            mContentView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE
+            fullscreenText.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE
                     | View.SYSTEM_UI_FLAG_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -98,20 +98,21 @@ public class MainActivity extends AppCompatActivity {
 
 
     private ImageView mImageView;
-    private TextView fullscreenText;
     private Button main_button;
     private enum MainButton { DELETE, DOWNLOAD };
     private MainButton mainButton;
     private String cachePath;
     private SharedPreferences prefs;
-    SharedPreferences.Editor ed;
+    private SharedPreferences.Editor ed;
     private int currentImage;
-    private String [] images =  {"image0.bmp", "image1.jpg", "image2.png"};
+    private final String [] images =  {"image0.bmp", "image1.jpg", "image2.png"};
+    private final String serverUrl = "http://s3.eu-central-1.amazonaws.com/imagedownloader/";
 
     DownloadManager downloadManager;
     String downloadFileUrl;
     private long myDownloadReference;
     private BroadcastReceiver receiverDownloadComplete;
+
 
 
     @Override
@@ -120,37 +121,31 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         fullscreenText = (TextView) findViewById(R.id.fullscreen_content);
-        mContentView = findViewById(R.id.fullscreen_content);
         mControlsView = findViewById(R.id.fullscreen_content_controls);
         mImageView = (ImageView) findViewById(R.id.loaded_image);
         main_button = (Button) findViewById(R.id.main_button);
         mVisible = true;
         // Set up the user interaction to manually show or hide the system UI.
-        mContentView.setOnClickListener(new View.OnClickListener() {
+        fullscreenText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 toggle();
             }
         });
-        // Upon interacting with UI controls, delay any scheduled hide()
-        // operations to prevent the jarring behavior of controls going away
-        // while interacting with the UI.
         findViewById(R.id.main_button).setOnTouchListener(mDelayHideTouchListener);
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
         ed = prefs.edit();
         currentImage = prefs.getInt("currentImage", 1);
-        ed.putLong("dmReference", -1);
-        ed.commit();
 
-        downloadFileUrl = "http://s3.eu-central-1.amazonaws.com/imagedownloader/" + images[currentImage];
+        downloadFileUrl = serverUrl + images[currentImage];
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
 
         main_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (v.getId() == R.id.main_button && mainButton == MainButton.DOWNLOAD) {
-                    DownloadImageTaskSafe(downloadFileUrl);
+                    DownloadImage(downloadFileUrl);
                     return;
                 }
 
@@ -163,14 +158,11 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-
     }
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-
         // Trigger the initial hide() shortly after the activity has been
         // created, to briefly hint to the user that UI controls
         // are available.
@@ -202,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("InlinedApi")
     private void show() {
         // Show the system bar
-        mContentView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        fullscreenText.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         mVisible = true;
 
@@ -221,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void DownloadImageTaskSafe(String fileURL) {
+    private void DownloadImage(String fileURL) {
         mControlsView.setBackgroundColor(getResources().getColor(R.color.transparent_overlay));
         ifLoading();
 
@@ -233,39 +225,34 @@ public class MainActivity extends AppCompatActivity {
 
         if (!isConnected) {
             Toast.makeText(MainActivity.this, "No Connection. " +
-                            "Picture will be download when connection resumes",
+                            "Picture will be download when it appears",
                     Toast.LENGTH_SHORT).show();
         }
 
-        Uri uri = Uri.parse(downloadFileUrl);
+        Uri uri = Uri.parse(fileURL);
         DownloadManager.Request request = new DownloadManager.Request(uri);
 
-//                set the notification
         request.setDescription("ImageDownloader")
                 .setTitle(images[currentImage]);
-
 
         request.setDestinationInExternalFilesDir(MainActivity.this,
                 Environment.DIRECTORY_DOWNLOADS, images[currentImage]);
 
         request.setVisibleInDownloadsUi(true);
 
-//                select which network, etc
         request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI
                 | DownloadManager.Request.NETWORK_MOBILE);
 
-//                queue the download
         myDownloadReference = downloadManager.enqueue(request);
         ed.putLong("dmReference", myDownloadReference);
         ed.commit();
-
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         currentImage = prefs.getInt("currentImage", 1);
-        downloadFileUrl = "http://s3.eu-central-1.amazonaws.com/imagedownloader/" + images[currentImage];
+        downloadFileUrl = serverUrl + images[currentImage];
         long reference = prefs.getLong("dmReference", -1);
 
         if(reference == -1){
@@ -275,72 +262,14 @@ public class MainActivity extends AppCompatActivity {
             checkLastDownloadStatus(reference);
         }
 
-
-//        filter for download - on completion
-        IntentFilter intentFilter = new IntentFilter(DownloadManager
-                .ACTION_DOWNLOAD_COMPLETE);
+        IntentFilter intentFilter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
 
         receiverDownloadComplete = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 long reference = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
                 if (myDownloadReference == reference) {
-//                    do something with the download file
-                    DownloadManager.Query query = new DownloadManager.Query();
-                    query.setFilterById(reference);
-                    Cursor cursor = downloadManager.query(query);
-
-                    cursor.moveToFirst();
-//                        get the status of the download
-                    int columnIndex = cursor.getColumnIndex(DownloadManager
-                            .COLUMN_STATUS);
-                    int status = cursor.getInt(columnIndex);
-
-                    int fileNameIndex = cursor.getColumnIndex(DownloadManager
-                            .COLUMN_LOCAL_FILENAME);
-                    cachePath = cursor.getString(fileNameIndex);
-                    ed.putString("cachePath", cachePath);
-                    ed.commit();
-
-//                        get the reason - more detail on the status
-                    int columnReason = cursor.getColumnIndex(DownloadManager
-                            .COLUMN_REASON);
-                    int reason = cursor.getInt(columnReason);
-
-                    switch (status) {
-                        case DownloadManager.STATUS_SUCCESSFUL:
-                            ifImageInCache();
-                            break;
-
-                        case DownloadManager.STATUS_FAILED:
-//                            // TODO: GOOGLE, WHY R U DOING THIS TO ME??????
-                            Toast.makeText(MainActivity.this,
-                                    "FAILED: " + reason,
-                                    Toast.LENGTH_LONG).show();
-                            ed.putLong("dmReference", -1);
-                            ed.commit();
-                            ifNoImageDownloaded();
-                            break;
-
-                        case DownloadManager.STATUS_PAUSED:
-                            Toast.makeText(MainActivity.this,
-                                    "PAUSED: " + reason,
-                                    Toast.LENGTH_LONG).show();
-                                    ifDownloadError();
-                            break;
-
-                        case DownloadManager.STATUS_PENDING:
-                            Toast.makeText(MainActivity.this,
-                                    "PENDING!",
-                                    Toast.LENGTH_LONG).show();
-                            break;
-
-                        case DownloadManager.STATUS_RUNNING:
-                            main_button.setVisibility(View.GONE);
-                            fullscreenText.setText(getResources().getText(R.string.loading));
-                            break;
-                    }
-                    cursor.close();
+                    checkLastDownloadStatus(reference);
                 }
             }
         };
@@ -361,41 +290,39 @@ public class MainActivity extends AppCompatActivity {
         Cursor cursor = downloadManager.query(query);
 
         cursor.moveToFirst();
+
         int columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
         int status = cursor.getInt(columnIndex);
 
-        int columnReason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
-        int reason = cursor.getInt(columnReason);
-
-        int fileNameIndex = cursor.getColumnIndex(DownloadManager
-                .COLUMN_LOCAL_FILENAME);
-
+        int fileNameIndex = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_FILENAME);
         cachePath = cursor.getString(fileNameIndex);
         ed.putString("cachePath", cachePath);
         ed.commit();
 
+        int columnReason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
+        int reason = cursor.getInt(columnReason);
+
         switch (status) {
             case DownloadManager.STATUS_SUCCESSFUL:
                 ifImageInCache();
+                break;
 
-                break;
             case DownloadManager.STATUS_FAILED:
-                Toast.makeText(MainActivity.this,
-                        "Download failed: " + reason, Toast.LENGTH_LONG).show();
-                break;
-            case DownloadManager.STATUS_PAUSED:
-                Toast.makeText(MainActivity.this, "Download paused: " + reason,
+                Toast.makeText(MainActivity.this, "FAILED: " + reason,
                         Toast.LENGTH_LONG).show();
+                ed.putLong("dmReference", -1);
+                ed.commit();
+                ifNoImageDownloaded();
+                break;
+
+            case DownloadManager.STATUS_PAUSED:
                 ifDownloadError();
                 break;
+
             case DownloadManager.STATUS_PENDING:
-                Toast.makeText(MainActivity.this,
-                        "PENDING!",
-                        Toast.LENGTH_LONG).show();
-                break;
+
             case DownloadManager.STATUS_RUNNING:
-                main_button.setVisibility(View.GONE);
-                fullscreenText.setText(getResources().getText(R.string.loading));
+                ifLoading();
                 break;
         }
         cursor.close();
@@ -417,7 +344,6 @@ public class MainActivity extends AppCompatActivity {
         mControlsView.setBackgroundColor(getResources().getColor(R.color.black_overlay));
         main_button.setText(getResources().getText(R.string.btn_delete));
         mainButton = MainButton.DELETE;
-
         main_button.setVisibility(View.VISIBLE);
 
         Bitmap bmp = BitmapFactory.decodeFile(cachePath);
@@ -439,13 +365,10 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case 1:
-                ifNoImageDownloaded();
                 Intent intent = new Intent(MainActivity.this, Settings.class);
                 startActivity(intent);
                 return true;

@@ -12,8 +12,6 @@ import android.widget.Toast;
 import java.io.File;
 
 public class Settings extends AppCompatActivity implements View.OnClickListener{
-    private View.OnClickListener radioListener;
-    private int selectedImage;
     private SharedPreferences prefs;
     private SharedPreferences.Editor ed;
     private int currentImage;
