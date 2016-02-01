@@ -11,11 +11,13 @@
     <string name="btn_delete">Удалить</string>
     <string name="download">Скачать</string>
     <string name="resume">Возобновить</string>
-    <string name="loading_paused">Загрузка приостановлена. Нажмите Возобновить</string>
-    <string name="loading">Загрузка...</string>
+    <string name="loading_paused">Загрузка продолжится после восстановления соединения</string>
+    <string name="loading">Выполняется загрузка</string>
     <string name="network_error">Ошибка: убедитесь, что вы подключены к интернету</string>
     <string name="warning_file_downloading">Ошибка: Нельзя удалить файл во время загрузки</string>
     <string name="saved">Изменения сохранены</string>
     <string name="deleted">Файл удален</string>
     <string name="nothing_to_delete">Файл уже удален</string>
+    <string name="no_connection">Загрузка начнется, когда появится соединение с интернетом</string>
+    <string name="loading_failed">Загрузка не выполнена</string>
 </resources>

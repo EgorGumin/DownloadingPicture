@@ -224,15 +224,14 @@ public class MainActivity extends AppCompatActivity {
                 && activeNetwork.isConnectedOrConnecting();
 
         if (!isConnected) {
-            Toast.makeText(MainActivity.this, "No Connection. " +
-                            "Picture will be download when it appears",
+            Toast.makeText(MainActivity.this, getResources().getString(R.string.no_connection),
                     Toast.LENGTH_SHORT).show();
         }
 
         Uri uri = Uri.parse(fileURL);
         DownloadManager.Request request = new DownloadManager.Request(uri);
 
-        request.setDescription("ImageDownloader")
+        request.setDescription(getResources().getString(R.string.app_name))
                 .setTitle(images[currentImage]);
 
         request.setDestinationInExternalFilesDir(MainActivity.this,
@@ -308,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
 
             case DownloadManager.STATUS_FAILED:
-                Toast.makeText(MainActivity.this, "FAILED: " + reason,
+                Toast.makeText(MainActivity.this, getResources().getString(R.string.loading_failed),
                         Toast.LENGTH_LONG).show();
                 ed.putLong("dmReference", -1);
                 ed.commit();
